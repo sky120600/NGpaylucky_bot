@@ -16,10 +16,10 @@ from telegram.ext import (
 # =========================================================
 # 基本设置
 # =========================================================
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")  # Render 环境变量读取
-TIMEZONE = ZoneInfo("Asia/Kuala_Lumpur")  # 吉隆坡/北京时间同区 UTC+8
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+TIMEZONE = ZoneInfo("Asia/Kuala_Lumpur")
 DAILY_PUSH_ENABLED = True
-DAILY_PUSH_HOUR = 9      # 每天几点推送（当地时区）
+DAILY_PUSH_HOUR = 9
 DAILY_PUSH_MINUTE = 0
 DB_FILE = "checkin.db"
 
@@ -172,7 +172,6 @@ async def do_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = get_db()
     row = conn.execute("SELECT * FROM users WHERE chat_id=? AND user_id=?", (chat.id, user.id)).fetchone()
 
-    # 已签到
     if row and row["last_checkin"] == current_date:
         fortune_level, fortune_text = generate_fortune(user.id)
         await update.message.reply_text(
@@ -184,7 +183,6 @@ async def do_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.close()
         return
 
-    # 首次签到
     if row is None:
         total_checkins, streak, points = 1, 1, 10
         conn.execute("""
@@ -196,7 +194,6 @@ async def do_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat.id, user.id, user.username, user.first_name,
             total_checkins, streak, points, current_date, now().isoformat()
         ))
-    # 老用户签到
     else:
         last_date = None
         if row["last_checkin"]:
@@ -248,9 +245,6 @@ async def chinese_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in ["签到", "打卡", "簽到", "打卡签到"]:
         await do_checkin(update, context)
 
-# =========================================================
-# /me
-# =========================================================
 async def me_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user, chat = update.effective_user, update.effective_chat
     if not user or not chat:
@@ -271,9 +265,6 @@ async def me_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(text)
 
-# =========================================================
-# /fortune
-# =========================================================
 async def fortune_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if not user:
@@ -283,9 +274,6 @@ async def fortune_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = f"🔮 {name} 的今日运势\n\n【{level}】\n\n{fortune_text}\n\n📅 {today()}"
     await update.message.reply_text(text)
 
-# =========================================================
-# /rank
-# =========================================================
 async def rank_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     if not chat:
@@ -307,9 +295,6 @@ async def rank_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text += f"{icon} {name}\n   🔥 {row['streak']}天  ⭐ {row['points']}积分  📅 {row['total_checkins']}次\n\n"
     await update.message.reply_text(text)
 
-# =========================================================
-# 每日自动推送
-# =========================================================
 async def daily_push(context: ContextTypes.DEFAULT_TYPE):
     if not DAILY_PUSH_ENABLED:
         return
@@ -330,9 +315,6 @@ async def daily_push(context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             print(f"推送失败 {chat['chat_id']}: {e}")
 
-# =========================================================
-# 设置菜单命令
-# =========================================================
 async def setup_commands(app: Application):
     commands = [
         BotCommand("start", "开始使用"),
@@ -347,9 +329,6 @@ async def setup_commands(app: Application):
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     print("Bot Error:", context.error)
 
-# =========================================================
-# 主程序
-# =========================================================
 def main():
     if not BOT_TOKEN:
         print("\n❌ 请先在 Render 设置环境变量 BOT_TOKEN\n")
