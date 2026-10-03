@@ -339,7 +339,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     print("Bot Error:", context.error)
 
 # =========================================================
-# 主程序 —— 完全抛弃 Updater，纯 Application 写法 ✅
+# 主程序 —— 完全抛弃 ，纯 Application 写法 ✅
 # =========================================================
 def main():
     if not BOT_TOKEN:
@@ -347,7 +347,7 @@ def main():
         return
     init_db()
 
-    # ✅ v20.7 标准入口 — 无任何 Updater
+    # ✅ v20.7 标准入口 — 无任何 
     app = Application.builder().token(BOT_TOKEN).post_init(setup_commands).build()
 
     app.add_handler(CommandHandler("start", start))
