@@ -233,13 +233,7 @@ def main():
         return
     init_db()
 
-    # ✅ v21+ 标准写法 — 内部 Updater 接口已修复
-    app = (
-        Application.builder()
-        .token(BOT_TOKEN)
-        .post_init(setup_commands)
-        .build()
-    )
+    app = Application.builder().token(BOT_TOKEN).post_init(setup_commands).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
@@ -247,15 +241,19 @@ def main():
     app.add_handler(CommandHandler("me", me_command))
     app.add_handler(CommandHandler("rank", rank_command))
     app.add_handler(CommandHandler("fortune", fortune_command))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chinese_checkin))
+    app.add_handler(MessageHandler(filters.Regex("^签到$|^打卡$|^簽到$"), do_checkin))
 
+    # ✅ 安全判断：job_queue 存在才设置定时任务
     if DAILY_PUSH_ENABLED:
-        app.job_queue.run_daily(daily_push, time=time(DAILY_PUSH_HOUR, DAILY_PUSH_MINUTE, tzinfo=TIMEZONE))
+        if app.job_queue:
+            app.job_queue.run_daily(
+                daily_push,
+                time=time(DAILY_PUSH_HOUR, DAILY_PUSH_MINUTE, tzinfo=TIMEZONE)
+            )
+            print(f"✅ 定时推送已设置 {DAILY_PUSH_HOUR}:{DAILY_PUSH_MINUTE}")
+        else:
+            print("⚠️ JobQueue 不可用，跳过定时推送（安装 python-telegram-bot[job-queue] 启用）")
 
     app.add_error_handler(error_handler)
-
     print("✅ 启动成功")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
-
-if __name__ == "__main__":
-    main()
