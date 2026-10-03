@@ -343,51 +343,30 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 # =========================================================
 def main():
     if not BOT_TOKEN:
-        print("\n❌ 请先在 Render 设置环境变量 BOT_TOKEN\n")
+        print("\n❌ 请先设置环境变量 BOT_TOKEN\n")
         return
-
     init_db()
 
-    # v20.x 标准唯一入口 —— 没有任何 Updater！
-    app = (
-        Application.builder()
-        .token(BOT_TOKEN)
-        .post_init(setup_commands)
-        .build()
-    )
+    # ✅ 标准 v20.7 写法，无任何 Updater
+    app = Application.builder().token(BOT_TOKEN).post_init(setup_commands).build()
 
-    # 注册命令
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("checkin", checkin_command))
     app.add_handler(CommandHandler("me", me_command))
     app.add_handler(CommandHandler("rank", rank_command))
     app.add_handler(CommandHandler("fortune", fortune_command))
-    # 中文签到
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chinese_checkin))
 
-    # 每日定时推送
     if DAILY_PUSH_ENABLED:
         app.job_queue.run_daily(
             daily_push,
-            time=time(
-                hour=DAILY_PUSH_HOUR,
-                minute=DAILY_PUSH_MINUTE,
-                tzinfo=TIMEZONE
-            ),
-            name="daily_push"
+            time=time(hour=DAILY_PUSH_HOUR, minute=DAILY_PUSH_MINUTE, tzinfo=TIMEZONE)
         )
 
-    # 错误处理
     app.add_error_handler(error_handler)
 
-    print("=" * 40)
-    print("🤖 签到机器人启动成功")
-    print(f"🌏 时区：{TIMEZONE.key}")
-    print(f"📅 每日推送：{DAILY_PUSH_HOUR}:{DAILY_PUSH_MINUTE:02d}")
-    print("=" * 40)
-
-    # 启动轮询
+    print("✅ 启动成功")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
