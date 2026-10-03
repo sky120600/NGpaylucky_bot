@@ -13,19 +13,15 @@ from telegram.ext import (
     filters,
 )
 
-# =========================================================
-# 基本设置
-# =========================================================
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+# ============= 配置区 =============
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8700209900:AAETFk9XhHLJdzKs9N0eNcYbeDzxgGmrKHc")
 TIMEZONE = ZoneInfo("Asia/Kuala_Lumpur")
 DAILY_PUSH_ENABLED = True
 DAILY_PUSH_HOUR = 9
 DAILY_PUSH_MINUTE = 0
 DB_FILE = "checkin.db"
 
-# =========================================================
-# 数据库
-# =========================================================
+# ============= 数据库 =============
 def get_db():
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
@@ -74,26 +70,18 @@ def save_chat(chat_id, chat_title):
     conn.commit()
     conn.close()
 
-# =========================================================
-# 工具
-# =========================================================
-def now():
-    return datetime.now(TIMEZONE)
-
-def today():
-    return now().date().isoformat()
+# ============= 工具函数 =============
+def now(): return datetime.now(TIMEZONE)
+def today(): return now().date().isoformat()
 
 def get_display_name(user):
-    if user.username:
-        return f"@{user.username}"
-    if user.first_name:
-        return user.first_name
+    if user.username: return f"@{user.username}"
+    if user.first_name: return user.first_name
     return "用户"
 
 def generate_fortune(user_id):
     date_string = today()
-    seed_string = f"{user_id}-{date_string}"
-    seed = int(hashlib.md5(seed_string.encode()).hexdigest(), 16)
+    seed = int(hashlib.md5(f"{user_id}-{date_string}".encode()).hexdigest(), 16)
     random.seed(seed)
     fortunes = [
         ("大吉", "🍀 好运正在靠近，今天适合做重要决定。"),
@@ -105,67 +93,39 @@ def generate_fortune(user_id):
         ("小吉", "☕ 今天适合处理积压已久的小事情。"),
         ("吉", "🌟 保持微笑，你今天的气场很足！"),
         ("大吉", "❤️ 人际关系顺利，可能会收到令人开心的消息。"),
-        ("平", "🌿 保持节奏，不必急于证明自己，按部就班就是前进，别着急。"),
+        ("平", "🌿 保持节奏，不必急于证明自己，按部就班就是前进。"),
     ]
     return random.choice(fortunes)
 
-# =========================================================
-# /start
-# =========================================================
+# ============= 命令处理 =============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat:
-        return
+    if not update.effective_chat: return
     chat = update.effective_chat
     save_chat(chat.id, chat.title or "私聊")
-    text = """
-🤖 签到机器人 v1.0
+    text = """🤖 签到机器人 v1.0
 欢迎使用！
-📅 /checkin
-签到 + 获取今日运势
-👤 /me
-查看个人签到资料
-🏆 /rank
-查看本群签到排行榜
-🔮 /fortune
-查看今日运势
-ℹ️ /help
-查看帮助
-也可以直接发送：
-签到
+📅 /checkin — 签到+运势
+👤 /me — 我的资料
+🏆 /rank — 排行榜
+🔮 /fortune — 今日运势
+ℹ️ /help — 帮助
+也可直接发送：签到
 """
     await update.message.reply_text(text)
 
-# =========================================================
-# /help
-# =========================================================
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = """
-📖 签到机器人使用说明
-📅 签到
-发送：
-签到
-或者：
-/checkin
-即可完成今日签到。
-👤 我的资料
-/me
-🏆 签到排行榜
-/rank
-🔮 今日运势
-/fortune
-🔥 连续签到越久，获得积分越多。
-每天只能签到一次。
+    text = """📖 使用说明
+发送「签到」或 /checkin 完成今日签到
+/me 查看个人资料
+/rank 查看本群排行
+/fortune 单独查运势
+🔥 连续签到越久奖励越多
 """
     await update.message.reply_text(text)
 
-# =========================================================
-# 签到
-# =========================================================
 async def do_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_user or not update.effective_chat:
-        return
-    user = update.effective_user
-    chat = update.effective_chat
+    if not update.effective_user or not update.effective_chat: return
+    user, chat = update.effective_user, update.effective_chat
     save_chat(chat.id, chat.title or "私聊")
     display_name = get_display_name(user)
     current_date = today()
@@ -173,167 +133,115 @@ async def do_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     row = conn.execute("SELECT * FROM users WHERE chat_id=? AND user_id=?", (chat.id, user.id)).fetchone()
 
     if row and row["last_checkin"] == current_date:
-        fortune_level, fortune_text = generate_fortune(user.id)
+        lv, ft = generate_fortune(user.id)
         await update.message.reply_text(
-            f"👤 {display_name}\n\n"
-            f"你今天已经签到过啦 ❤️\n\n"
-            f"🔮 今日运势：\n【{fortune_level}】 {fortune_text}\n\n"
-            f"🔥 连续签到：{row['streak']} 天\n⭐ 当前积分：{row['points']}"
+            f"👤 {display_name}\n已签到 ✅\n【{lv}】{ft}\n🔥 连续: {row['streak']}天 ⭐ 积分: {row['points']}"
         )
         conn.close()
         return
 
     if row is None:
-        total_checkins, streak, points = 1, 1, 10
+        total, streak, points = 1, 1, 10
         conn.execute("""
-            INSERT INTO users (
-                chat_id, user_id, username, first_name,
-                total_checkins, streak, points, last_checkin, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            chat.id, user.id, user.username, user.first_name,
-            total_checkins, streak, points, current_date, now().isoformat()
-        ))
+            INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?)
+        """, (chat.id, user.id, user.username, user.first_name, total, streak, points, current_date, now().isoformat()))
     else:
         last_date = None
         if row["last_checkin"]:
-            try:
-                last_date = datetime.fromisoformat(row["last_checkin"]).date()
-            except:
-                pass
-        if last_date and (now().date() - last_date).days == 1:
-            streak = row["streak"] + 1
-        else:
-            streak = 1
-        total_checkins = row["total_checkins"] + 1
-        points_add = 10
-        if streak >= 7: points_add += 5
-        if streak >= 30: points_add += 10
-        points = row["points"] + points_add
+            try: last_date = datetime.fromisoformat(row["last_checkin"]).date()
+            except: pass
+        streak = row["streak"] + 1 if (last_date and (now().date() - last_date).days == 1) else 1
+        total = row["total_checkins"] + 1
+        add = 10
+        if streak >= 7: add += 5
+        if streak >= 30: add += 10
+        points = row["points"] + add
         conn.execute("""
-            UPDATE users SET
-                username=?, first_name=?, total_checkins=?,
-                streak=?, points=?, last_checkin=?
+            UPDATE users SET username=?,first_name=?,total_checkins=?,streak=?,points=?,last_checkin=?
             WHERE chat_id=? AND user_id=?
-        """, (
-            user.username, user.first_name, total_checkins,
-            streak, points, current_date, chat.id, user.id
-        ))
+        """, (user.username, user.first_name, total, streak, points, current_date, chat.id, user.id))
     conn.commit()
     row = conn.execute("SELECT * FROM users WHERE chat_id=? AND user_id=?", (chat.id, user.id)).fetchone()
     conn.close()
 
-    fortune_level, fortune_text = generate_fortune(user.id)
-    message = (
-        f"👤 {display_name} 的今日运势：\n\n"
-        f"【{fortune_level}】 {fortune_text}\n\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"📅 今日签到：第 {row['total_checkins']} 天\n"
-        f"🔥 连续签到：{row['streak']} 天\n"
-        f"⭐ 当前积分：{row['points']}\n"
-        f"━━━━━━━━━━━━━━"
-    )
-    await update.message.reply_text(message)
+    lv, ft = generate_fortune(user.id)
+    msg = f"""👤 {display_name}
+【{lv}】{ft}
+━━━━━━━━━━
+📅 第 {row['total_checkins']} 天
+🔥 连续 {row['streak']} 天
+⭐ 积分 {row['points']}
+"""
+    await update.message.reply_text(msg)
 
 async def checkin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await do_checkin(update, context)
 
 async def chinese_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
-    text = update.message.text.strip() if update.message.text else ""
-    if text in ["签到", "打卡", "簽到", "打卡签到"]:
+    if not update.message: return
+    t = update.message.text.strip() if update.message.text else ""
+    if t in ["签到", "打卡", "簽到", "打卡签到"]:
         await do_checkin(update, context)
 
 async def me_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user, chat = update.effective_user, update.effective_chat
-    if not user or not chat:
-        return
-    conn = get_db()
-    row = conn.execute("SELECT * FROM users WHERE chat_id=? AND user_id=?", (chat.id, user.id)).fetchone()
-    conn.close()
+    u, c = update.effective_user, update.effective_chat
+    if not u or not c: return
+    row = get_db().execute("SELECT * FROM users WHERE chat_id=? AND user_id=?", (c.id, u.id)).fetchone()
     if not row:
-        await update.message.reply_text("你还没有签到过。\n\n发送「签到」开始第一次签到吧 ❤️")
+        await update.message.reply_text("还没签到，发送「签到」开始吧 ❤️")
         return
-    display_name = get_display_name(user)
-    text = (
-        f"👤 {display_name}\n\n"
-        f"📅 总签到：{row['total_checkins']} 次\n"
-        f"🔥 连续签到：{row['streak']} 天\n"
-        f"⭐ 当前积分：{row['points']}\n"
-        f"🕐 最后签到：{row['last_checkin']}"
+    dn = get_display_name(u)
+    await update.message.reply_text(
+        f"👤 {dn}\n📅 总签到: {row['total_checkins']}\n🔥 连续: {row['streak']}天\n⭐ 积分: {row['points']}\n🕐 最后: {row['last_checkin']}"
     )
-    await update.message.reply_text(text)
 
 async def fortune_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    if not user:
-        return
-    level, fortune_text = generate_fortune(user.id)
-    name = get_display_name(user)
-    text = f"🔮 {name} 的今日运势\n\n【{level}】\n\n{fortune_text}\n\n📅 {today()}"
-    await update.message.reply_text(text)
+    if not update.effective_user: return
+    lv, ft = generate_fortune(update.effective_user.id)
+    await update.message.reply_text(f"🔮 {get_display_name(update.effective_user)}\n【{lv}】{ft}\n📅 {today()}")
 
 async def rank_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
-    if not chat:
-        return
-    conn = get_db()
-    rows = conn.execute("""
-        SELECT * FROM users WHERE chat_id=?
-        ORDER BY points DESC, total_checkins DESC LIMIT 10
-    """, (chat.id,)).fetchall()
-    conn.close()
+    if not update.effective_chat: return
+    rows = get_db().execute("SELECT * FROM users WHERE chat_id=? ORDER BY points DESC,total_checkins DESC LIMIT 10", (update.effective_chat.id,)).fetchall()
     if not rows:
-        await update.message.reply_text("🏆 目前还没有签到记录。")
+        await update.message.reply_text("🏆 暂无记录")
         return
-    text = "🏆 本群签到排行榜\n\n"
-    medals = ["🥇", "🥈", "🥉"]
-    for idx, row in enumerate(rows):
-        name = row["username"] or row["first_name"] or "用户"
-        icon = medals[idx] if idx < 3 else f"{idx+1}."
-        text += f"{icon} {name}\n   🔥 {row['streak']}天  ⭐ {row['points']}积分  📅 {row['total_checkins']}次\n\n"
-    await update.message.reply_text(text)
+    txt = "🏆 本群排行榜\n\n"
+    md = ["🥇", "🥈", "🥉"]
+    for i, r in enumerate(rows):
+        n = r["username"] or r["first_name"] or "用户"
+        ico = md[i] if i < 3 else f"{i+1}."
+        txt += f"{ico} {n}\n   🔥 {r['streak']}天  ⭐ {r['points']}分  📅 {r['total_checkins']}次\n\n"
+    await update.message.reply_text(txt)
 
 async def daily_push(context: ContextTypes.DEFAULT_TYPE):
-    if not DAILY_PUSH_ENABLED:
-        return
-    conn = get_db()
-    chats = conn.execute("SELECT chat_id, chat_title FROM chats").fetchall()
-    conn.close()
-    text = (
-        "🌞 早上好！\n\n"
-        "新的一天开始啦 ❤️\n\n"
-        "📅 今天记得签到\n"
-        "🔮 看看你的今日运势\n"
-        "🔥 连续签到不要断哦！\n\n"
-        "发送「签到」即可完成签到。"
-    )
-    for chat in chats:
-        try:
-            await context.bot.send_message(chat_id=chat["chat_id"], text=text)
-        except Exception as e:
-            print(f"推送失败 {chat['chat_id']}: {e}")
+    if not DAILY_PUSH_ENABLED: return
+    chats = get_db().execute("SELECT chat_id FROM chats").fetchall()
+    txt = "🌞 早上好！\n今天记得签到哦～发送「签到」即可\n保持连续不要断！"
+    for c in chats:
+        try: await context.bot.send_message(c["chat_id"], txt)
+        except: pass
 
 async def setup_commands(app: Application):
-    commands = [
+    await app.bot.set_my_commands([
         BotCommand("start", "开始使用"),
         BotCommand("checkin", "今日签到"),
-        BotCommand("me", "我的签到资料"),
-        BotCommand("rank", "签到排行榜"),
+        BotCommand("me", "我的资料"),
+        BotCommand("rank", "排行榜"),
         BotCommand("fortune", "今日运势"),
         BotCommand("help", "帮助"),
-    ]
-    await app.bot.set_my_commands(commands)
+    ])
 
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    print("Bot Error:", context.error)
+async def error_handler(u, e): print("Error:", e.context.error)
 
+# ============= 主程序 =============
 def main():
     if not BOT_TOKEN:
-        print("\n❌ 请先在 Render 设置环境变量 BOT_TOKEN\n")
+        print("❌ 请设置环境变量 BOT_TOKEN")
         return
     init_db()
+
+    # ✅ v20.7 标准唯一正确写法
     app = Application.builder().token(BOT_TOKEN).post_init(setup_commands).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -345,20 +253,11 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chinese_checkin))
 
     if DAILY_PUSH_ENABLED:
-        app.job_queue.run_daily(
-            daily_push,
-            time=time(hour=DAILY_PUSH_HOUR, minute=DAILY_PUSH_MINUTE, tzinfo=TIMEZONE),
-            name="daily_checkin_push"
-        )
+        app.job_queue.run_daily(daily_push, time=time(DAILY_PUSH_HOUR, DAILY_PUSH_MINUTE, tzinfo=TIMEZONE))
 
     app.add_error_handler(error_handler)
 
-    print("========================================")
-    print("🤖 Telegram 签到机器人启动成功")
-    print(f"🌏 时区：{TIMEZONE}")
-    print(f"📅 每日推送：{DAILY_PUSH_HOUR}:{DAILY_PUSH_MINUTE:02d}")
-    print("========================================")
-
+    print("✅ 启动成功")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
