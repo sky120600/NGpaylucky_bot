@@ -343,11 +343,11 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 # =========================================================
 def main():
     if not BOT_TOKEN:
-        print("\n❌ 请先设置环境变量 BOT_TOKEN\n")
+        print("❌ 请设置环境变量 BOT_TOKEN")
         return
     init_db()
 
-    # ✅ 标准 v20.7 写法，无任何 Updater
+    # ✅ v20.7 标准入口 — 无任何 Updater
     app = Application.builder().token(BOT_TOKEN).post_init(setup_commands).build()
 
     app.add_handler(CommandHandler("start", start))
