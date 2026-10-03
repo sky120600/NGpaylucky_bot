@@ -17,7 +17,7 @@ from telegram.ext import (
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 TIMEZONE = ZoneInfo("Asia/Kuala_Lumpur")
 DAILY_PUSH_ENABLED = True
-DAILY_PUSH_HOUR = 9
+DAILY_PUSH_HOUR = 3
 DAILY_PUSH_MINUTE = 0
 DB_FILE = "checkin.db"
 
