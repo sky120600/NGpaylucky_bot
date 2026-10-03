@@ -297,7 +297,7 @@ def main():
 
     app = Application.builder().token(BOT_TOKEN).post_init(setup_commands).build()
 
-    # 签到相关
+    # 签到相关指令
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("checkin", checkin_command))
@@ -311,15 +311,15 @@ def main():
     app.add_handler(CommandHandler("push_off", push_off))
     app.add_handler(CommandHandler("push_text", push_text))
 
-    # 定时任务
-    if app.job_queue:
+    # ✅ 定时任务 —— 安全判断
+    if app.job_queue is not None:
         app.job_queue.run_daily(
             daily_push,
             time=time(DAILY_PUSH_HOUR, DAILY_PUSH_MINUTE, tzinfo=TIMEZONE)
         )
         print(f"✅ 定时任务已启动：每日 {DAILY_PUSH_HOUR}:{DAILY_PUSH_MINUTE:02d}")
     else:
-        print("⚠️ JobQueue 不可用，请安装 python-telegram-bot[job-queue]")
+        print("⚠️ JobQueue 未启用，定时推送已跳过")
 
     app.add_error_handler(error_handler)
     print("✅ 启动成功")
