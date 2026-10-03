@@ -243,17 +243,13 @@ def main():
     app.add_handler(CommandHandler("fortune", fortune_command))
     app.add_handler(MessageHandler(filters.Regex("^签到$|^打卡$|^簽到$"), do_checkin))
 
-    # ✅ 安全判断：job_queue 存在才设置定时任务
+    # 每日定时推送
     if DAILY_PUSH_ENABLED:
-        if app.job_queue:
+        if app.job_queue is not None:
             app.job_queue.run_daily(
                 daily_push,
                 time=time(DAILY_PUSH_HOUR, DAILY_PUSH_MINUTE, tzinfo=TIMEZONE)
             )
-            print(f"✅ 定时推送已设置 {DAILY_PUSH_HOUR}:{DAILY_PUSH_MINUTE}")
+            print(f"✅ 定时推送已设置：每天 {DAILY_PUSH_HOUR}:{DAILY_PUSH_MINUTE:02d}")
         else:
-            print("⚠️ JobQueue 不可用，跳过定时推送（安装 python-telegram-bot[job-queue] 启用）")
-
-    app.add_error_handler(error_handler)
-    print("✅ 启动成功")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+            print("⚠️ JobQueue 未启用，定时推送已跳过")
